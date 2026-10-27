@@ -11,19 +11,34 @@ MAX_SECONDS = 7.0
 MIN_SECONDS = 1.0
 
 
+def _sounds(token: str) -> bool:
+    return any(ch.isalnum() for ch in token)
+
+
 def split_words(lines: list[str]) -> tuple[list[str], list[int]]:
     """Every word, and the transcript line (sentence) it came from. A token with no letter
-    or digit, like the "--" of a restarted sentence, rides along with the word before it,
-    since the aligner can't time something that makes no sound."""
+    or digit, like the "--" of a restarted sentence, rides along with a word of its
+    sentence (the one before it, else the one after), since it makes no sound to time."""
     words, line_of = [], []
     for i, line in enumerate(lines):
+        pending = []
         for w in line.split():
-            if not any(ch.isalnum() for ch in w) and words and line_of[-1] == i:
+            if _sounds(w):
+                words.append(" ".join(pending + [w]))
+                line_of.append(i)
+                pending = []
+            elif words and line_of[-1] == i:
                 words[-1] += " " + w
             else:
-                words.append(w)
-                line_of.append(i)
+                pending.append(w)
+        if pending and words:
+            words[-1] += " " + " ".join(pending)
     return words, line_of
+
+
+def spoken(word: str) -> str:
+    """The part of a word from split_words the aligner can hear: one token, no spaces."""
+    return next(t for t in word.split() if _sounds(t))
 
 
 def build_cues(words: list[str], line_of: list[int],

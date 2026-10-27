@@ -188,7 +188,7 @@ def _make_subtitles(folder: Path, vid: str, title: str, url: str, full: Path,
 
     words, line_of = srt.split_words(lines)
     print(f"  Timing {len(words)} words ({len(words) / (duration / 60):.0f} words/min)...")
-    times = align_words(full, words)
+    times = align_words(full, [srt.spoken(w) for w in words])
     (folder / "words.json").write_text(json.dumps(
         [{"w": w, "line": li, "start": s, "end": e}
          for w, li, (s, e) in zip(words, line_of, times)], ensure_ascii=False), encoding="utf-8")

@@ -1,5 +1,5 @@
 """Building, writing and reading subtitles."""
-from ka_subs.srt import build_cues, parse_srt, split_words, stamp, to_srt, wrap
+from ka_subs.srt import build_cues, parse_srt, split_words, spoken, stamp, to_srt, wrap
 
 
 def test_stamp_format():
@@ -11,6 +11,20 @@ def test_split_words_keeps_sentence_and_attaches_dash():
     words, line_of = split_words(["ერთი ორი --", "სამი"])
     assert words == ["ერთი", "ორი --", "სამი"]
     assert line_of == [0, 0, 1]
+
+
+def test_dash_at_sentence_start_rides_with_the_next_word():
+    words, line_of = split_words(["-- ერთი ორი", "სამი -- ოთხი", "ხუთი", "--"])
+    assert words == ["-- ერთი", "ორი", "სამი --", "ოთხი", "ხუთი --"]
+    assert line_of == [0, 0, 1, 1, 2]
+
+
+def test_aligner_gets_exactly_one_token_per_word():
+    # The bug from the first real run: "--" sent along made 1308 tokens for 1306 words.
+    words, _ = split_words(["ეს -- ის რომ", "-- კი", "ხო... -- ჰო"])
+    heard = [spoken(w) for w in words]
+    assert heard == ["ეს", "ის", "რომ", "კი", "ხო...", "ჰო"]
+    assert len(" ".join(heard).split()) == len(words)
 
 
 def test_new_sentence_starts_a_new_subtitle():
