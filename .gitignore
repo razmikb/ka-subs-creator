@@ -1,4 +1,9 @@
 .env
 .venv/
 work/
+audio/
+*.m4a
+*.webm
+*.opus
+*.mp3
 __pycache__/

@@ -18,8 +18,10 @@ from .prompt import PROMPT
 _AUDIO_EXTS = {".webm", ".m4a", ".mp3", ".ogg", ".opus", ".wav", ".mp4", ".aac", ".flac"}
 
 
-def run_batch(text: str, root: Path, api_key: str | None, model: str) -> None:
-    """Every video in the links text; keeps going past a bad one, then prints a summary."""
+def run_batch(text: str, root: Path, api_key: str | None, model: str,
+              ask_upload=None) -> None:
+    """Every video in the links text; keeps going past a bad one, then prints a summary.
+    ask_upload(vid, url, folder) -> bool, if given, asks for the audio when YouTube blocks."""
     try:
         urls = youtube.expand(text)
     except Stop as exc:
@@ -31,7 +33,7 @@ def run_batch(text: str, root: Path, api_key: str | None, model: str) -> None:
     for i, url in enumerate(urls, 1):
         print(f"━━ {i}/{len(urls)}  {url}")
         try:
-            status, note = process(url, root, api_key, model, state)
+            status, note = process(url, root, api_key, model, state, ask_upload)
         except Stop as exc:
             status, note = "failed", str(exc)
             print(f"  STOPPED: {exc}")
@@ -49,7 +51,8 @@ def run_batch(text: str, root: Path, api_key: str | None, model: str) -> None:
                 print(f"  {u}  {n}")
 
 
-def process(url: str, root: Path, api_key: str | None, model: str, state: dict) -> tuple[str, str]:
+def process(url: str, root: Path, api_key: str | None, model: str, state: dict,
+            ask_upload=None) -> tuple[str, str]:
     """One video. Returns (status, short note) where status is done / listen / waiting /
     skipped; a problem raises Stop."""
     vid = youtube.video_id(url)
@@ -69,11 +72,12 @@ def process(url: str, root: Path, api_key: str | None, model: str, state: dict) 
         if meta["subs"] == "auto":
             print("  (It has YouTube's automatic Georgian captions only. Making proper ones.)")
     except youtube.Blocked:
-        if not _have_audio(folder):
-            raise Stop(_blocked_help(url, vid)) from None
-        print("  YouTube blocked the details, but the audio is already here. Carrying on.")
+        if _have_audio(folder):
+            print("  YouTube blocked the details, but the audio is already here. Carrying on.")
+        else:
+            _ask_or_stop(url, vid, folder, ask_upload)
 
-    full = _get_audio(url, folder)
+    full = _get_audio(url, folder, ask_upload)
     duration = audio.seconds(full)
     print(f"  Audio: {clock(duration)}")
 
@@ -97,7 +101,7 @@ def _uploaded_audio(folder: Path) -> Path | None:
     return None
 
 
-def _get_audio(url: str, folder: Path) -> Path:
+def _get_audio(url: str, folder: Path, ask_upload=None) -> Path:
     full = folder / "full.opus"
     if full.exists():
         return full
@@ -107,18 +111,21 @@ def _get_audio(url: str, folder: Path) -> Path:
         try:
             source = youtube.download_audio(url, folder)
         except youtube.Blocked:
-            raise Stop(_blocked_help(url, folder.name)) from None
+            _ask_or_stop(url, folder.name, folder, ask_upload)
+            source = _uploaded_audio(folder)
     audio.to_opus(source, full)
     source.unlink()
     return full
 
 
-def _blocked_help(url: str, vid: str) -> str:
-    return (f"YouTube refused to send this video to Google's servers. Download the audio on "
-            f"your laptop instead:\n"
-            f"    1. In a terminal:  yt-dlp -f bestaudio -o \"{vid}.%(ext)s\" -- {url}\n"
-            f"    2. Upload that file into Google Drive: My Drive / ka-subs / {vid} /\n"
-            f"    3. Run the notebook again.")
+def _ask_or_stop(url: str, vid: str, folder: Path, ask_upload) -> None:
+    """YouTube blocked Colab: ask for the audio file, or stop with how to get it."""
+    if ask_upload is None or not ask_upload(vid, url, folder) or _uploaded_audio(folder) is None:
+        raise Stop(f"YouTube refused to send this video to Google's servers. Download the "
+                   f"audio on your laptop instead:\n"
+                   f"    1. In a terminal:  yt-dlp -f bestaudio -o \"{vid}.%(ext)s\" -- {url}\n"
+                   f"    2. Put that file into Google Drive: My Drive / ka-subs / {vid} /\n"
+                   f"    3. Run the notebook again.")
 
 
 def _get_transcript(folder: Path, vid: str, full: Path, api_key: str | None, model: str,
