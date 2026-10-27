@@ -2,6 +2,8 @@
 .venv/
 work/
 audio/
+subs/
+*.srt
 *.m4a
 *.webm
 *.opus

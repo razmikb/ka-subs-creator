@@ -57,8 +57,16 @@ Defaults are in brackets; use them if the owner has no preference.
   digits, maths as spoken words. They set no line length, so lines are 2 × 42 chars, 7 s max.
 - Model: `gemini-3.8-flash` via the `interactions` API (checked on ai.google.dev, 2026-10-27).
   Free-tier limits are only shown in AI Studio.
-- Not yet tested in Colab: YouTube download from Google's servers (may be blocked; the
-  notebook then explains the laptop download), Gemini output quality, line length on screen.
+- **First real video done end to end (2026-10-27):** wY2L98eHShE (enzyme cofactors, 10:22).
+  Gemini API: 126 words/min, 1306 words → 137 subtitles, checks flagged nothing. The owner
+  watched it with the `.srt` and uploaded it: wording and timing right, line size accepted.
+- YouTube download from Colab is **sometimes blocked** ("confirm you're not a bot") and
+  sometimes works for the same video; cell 2 then shows an upload button for audio fetched
+  on the laptop. yt-dlp warns that no JavaScript runtime (deno) is installed; harmless so far.
+- Lessons: the aligner counts words by splitting on spaces, so each word sent to it must be
+  one token (`srt.spoken`). Re-running cell 1 must drop loaded `ka_subs` modules, or Colab
+  keeps running the old code.
+- Left from §5: a README for the owner (the `.bat` is not needed now that it runs in Colab).
 
 ## 2. What is already known (settled, don't re-test)
 
